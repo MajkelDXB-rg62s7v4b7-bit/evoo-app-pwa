@@ -14,3 +14,4 @@ $('#v-cat').onclick=function(e){var t=e.target,d=t.dataset||{};
  if(d.rm){S.cust=S.cust.filter(function(x){return x.id!==d.rm});if(S.prov===d.rm){S.prov='openai';S.model=''}save();provOpts();cat();return}
  if(t.id==='xadd'){var n=$('#xn').value.trim(),b=$('#xb').value.trim().replace(/\/$/,'');if(!n||!/^https:\/\//.test(b)){alert('Podaj nazwę i adres https://');return}S.cust.push({id:'x'+uid(),n:n,base:b,key:$('#xk').value.trim(),custom:1});save();provOpts();cat()}};
 })();
+(function(){var s=document.createElement('script');s.src='auto15.js?v=15';document.body.appendChild(s)})();
