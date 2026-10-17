@@ -1,0 +1,62 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon/icon-192.png">
+<title>Evoo AI OS</title>
+<link rel="stylesheet" href="app.css"></head><body>
+<div id="app">
+<nav id="nav"></nav>
+<main>
+<section class="view on" id="v-chat">
+ <div class="avs" id="avs"></div>
+ <div id="stage" class="big"><canvas id="cv" width="360" height="360" style="display:none;width:180px;height:180px;border-radius:16px"></canvas><div class="orb" id="bigorb"></div><div class="st" id="status"></div></div>
+ <div id="msgs"></div>
+ <div id="bar">
+  <button class="gh" id="live" title="Rozmowa na żywo">📞</button><button class="gh" id="mic" title="Mów">🎤</button>
+  <textarea id="inp" rows="1" placeholder="Napisz do asystenta…"></textarea>
+  <button class="pri" id="send">➤</button>
+ </div>
+</section>
+<section class="view" id="v-dash"><div class="scroll" id="dash"></div></section>
+<section class="view" id="v-tasks"><div class="scroll">
+ <h2>Zadania</h2><div class="row"><input id="tnew" placeholder="Nowe zadanie" class="grow"><button class="pri" id="tadd">+</button></div><div id="tlist"></div></div></section>
+<section class="view" id="v-mem"><div class="scroll">
+ <h2>Pamięć</h2><p class="mut">Asystent zapamiętuje tu ważne fakty o Tobie i używa ich w rozmowach. Możesz edytować.</p>
+ <div class="row"><input id="mnew" placeholder="Dodaj fakt" class="grow"><button class="pri" id="madd">+</button></div><div id="mlist"></div>
+ <h2 style="margin-top:20px">Projekty / notatki</h2><div class="row"><input id="pnew" placeholder="Nazwa projektu" class="grow"><button class="pri" id="padd">+</button></div><div id="plist"></div></div></section>
+<section class="view" id="v-cat"><div class="scroll"><h2>Katalog modeli</h2><p class="mut">Dodaj dostawcę jednym kliknięciem, wpisz jego klucz API, a Evoo pobierze modele. Potem przetestujesz je i wybierzesz w Ustawieniach. Limity i ceny zmieniają się, więc sprawdź je u dostawcy.</p><div id="catl"></div></div></section>
+<section class="view" id="v-conn"><div class="scroll">
+ <h2>Połączenia z aplikacjami</h2>
+ <p class="mut">Dodaj webhook (Zapier, Make, n8n, IFTTT) i nazwę. Asystent sam go wywoła, gdy poprosisz, np. „dodaj wydarzenie do kalendarza” lub „wyślij mi maila”. Zrobisz tak połączenie z Google, Slackiem, Notion itd.</p>
+ <div class="card"><input id="cn" placeholder="Nazwa (np. kalendarz)"><input id="cd" placeholder="Co robi (opis dla AI)"><input id="cu" placeholder="URL webhooka https://…"><button class="pri" id="cadd">Dodaj połączenie</button></div>
+ <div id="clist"></div></div></section>
+<section class="view" id="v-imp"><div class="scroll">
+ <h2>Samodoskonalenie Evoo</h2>
+ <p class="mut">Asystent może proponować ulepszenia (styl, zasady, pamięć). Nic nie zmienia bez Twojej zgody. Każdą zmianę możesz cofnąć.</p>
+ <button class="pri" id="analyze">Poproś o propozycje ulepszeń</button>
+ <h2 style="margin-top:18px">Do zatwierdzenia</h2><div id="plist2"></div>
+ <h2 style="margin-top:18px">Historia zmian</h2><div id="hlist"></div></div></section>
+<section class="view" id="v-set"><div class="scroll">
+ <h2>Ustawienia</h2>
+ <div class="card"><b>Model myślowy</b>
+  <select id="prov"><option value="openai">OpenAI</option><option value="gemini">Google Gemini</option><option value="anthropic">Anthropic Claude</option></select>
+  <div class="row"><select id="mdl" class="grow"></select><button class="gh" id="fetchm">Pobierz modele</button></div>
+  <input id="model" placeholder="lub wpisz nazwę modelu">
+  <div class="row"><button class="gh" id="testm">Testuj wybrany</button><button class="gh" id="testall">Testuj wszystkie</button></div><small id="mstat"></small>
+  <input id="key" type="password" placeholder="Klucz API (zostaje tylko w tej przeglądarce)">
+  <small>Podpowiedź: OpenAI gpt-4o / gpt-4.1, Gemini gemini-2.0-flash (darmowy limit), Claude claude-sonnet-4-5. Wpisz aktualną nazwę z konta.</small></div>
+ <div class="card"><b>Serwer prywatny (opcjonalnie)</b><br><small>Klucze API leżą na serwerze, a zsynchronizowane dane są zaszyfrowane Twoim hasłem.</small>
+  <input id="surl" placeholder="https://evoo-server.xxx.workers.dev"><input id="stok" type="password" placeholder="TOKEN dostępu"><input id="spass" type="password" placeholder="Hasło szyfrowania (min. 12 znaków)">
+  <div class="row"><button class="gh" id="spush">Wyślij dane</button><button class="gh" id="spull">Pobierz dane</button></div><small id="sst"></small></div>
+ <div class="card"><b>Głos</b>
+  <select id="tts"><option value="browser">Głos przeglądarki (darmowy)</option><option value="openai">OpenAI TTS (lepszy, płatny)</option></select>
+  <select id="voice"></select><select id="auto"><option value="1">Czytaj odpowiedzi na głos</option><option value="0">Tylko tekst</option></select>
+  <select id="lang"><option>pl-PL</option><option>en-US</option><option>de-DE</option></select></div>
+ <div class="card"><b>Avatar 3D</b><br><small>Wgraj własny model .vrm (np. z darmowego VRoid Studio, realistyczne też są dostępne). Zostaje tylko w tym urządzeniu. Bez modelu działa kula. Ten sam model posłuży później do filmów na YouTube.</small>
+  <input id="vrm" type="file" accept=".vrm,.glb"><div class="row"><button class="gh" id="vrmx">Usuń model</button></div><small id="vst"></small></div>
+ <div class="card"><b>Osobowość</b><select id="pers"></select><textarea id="pintro" rows="4" placeholder="Własny opis osobowości (puste = domyślny)"></textarea></div>
+ <div class="row"><button class="pri" id="save">Zapisz</button><button class="gh" id="exp">Eksport danych</button><button class="gh" id="wipe">Usuń wszystko</button></div>
+</div></section>
+</main></div>
+<script src="app1.js"></script><script src="app2.js"></script></body></html>
