@@ -24,19 +24,21 @@ function state(c){var s=$('#stage');s.classList.remove('talk','listen');if(c)s.c
 /* messages */
 function H(){return S.hist[S.pers]||(S.hist[S.pers]=[])}
 function render(){var h=H();$('#msgs').innerHTML=h.filter(function(m){return m.show}).map(function(m){return '<div class="m '+m.cls+'">'+esc(m.text)+'</div>'}).join('')||'<div class="m t">Cześć! Jestem '+esc(P[S.pers].n)+'. Napisz lub naciśnij 🎤.</div>';$('#msgs').scrollTop=1e9}
-function sys(){var p=P[S.pers];var intro=(S.intros[S.pers]||p.i);var ru=S.rules.length?'\nZatwierdzone przez użytkownika zasady:\n- '+S.rules.map(function(x){return x.t}).join('\n- '):'';var m=S.mem.length?'\nCo wiesz o użytkowniku:\n- '+S.mem.map(function(x){return x.t}).join('\n- '):'';var t=S.tasks.filter(function(x){return!x.done}).map(function(x){return x.t});return intro+'\n'+RULES+ru+'\nDziś: '+new Date().toLocaleString('pl-PL')+m+(live?'\nTRYB ROZMOWY GŁOSOWEJ: odpowiadaj naturalnie, 1-3 krótkimi zdaniami, bez list i formatowania, jak w rozmowie z człowiekiem. Zadaj najwyżej jedno pytanie.':'')+(t.length?'\nOtwarte zadania: '+t.join('; '):'')}
+function sys(){var p=P[S.pers];var intro=(S.intros[S.pers]||p.i);var ru=S.rules.length?'\nZatwierdzone przez użytkownika zasady:\n- '+S.rules.map(function(x){return x.t}).join('\n- '):'';var m=S.mem.length?'\nCo wiesz o użytkowniku:\n- '+S.mem.map(function(x){return x.t}).join('\n- '):'';var t=S.tasks.filter(function(x){return!x.done}).map(function(x){return x.t});return intro+'\n'+RULES+ru+'\nDziś: '+new Date().toLocaleString('pl-PL')+m+(live?'\nTRYB ROZMOWY GŁOSOWEJ: odpowiadaj naturalnie, 1-3 krótkimi zdaniami, bez list i formatowania, jak w rozmowie z człowiekiem. Zadaj najwyżej jedno pytanie.':'')+(t.length?'\nOtwarte zadania: '+t.join('; '):'')+extraCtx()}
 /* tools */
 function tools(){var T=[
  {name:'add_task',description:'Dodaj zadanie do listy użytkownika',p:{text:{type:'string'}},r:['text']},
  {name:'save_memory',description:'Zapamiętaj trwały fakt o użytkowniku',p:{fact:{type:'string'}},r:['fact']},
  {name:'propose_improvement',description:'Zaproponuj ulepszenie samej siebie. Nie wprowadza zmiany, tylko trafia do zatwierdzenia przez użytkownika. kind: persona (nowy opis osobowości aktualnego avatara), rule (nowa stała zasada zachowania), memory (fakt o użytkowniku)',p:{kind:{type:'string',enum:['persona','rule','memory']},title:{type:'string'},reason:{type:'string'},content:{type:'string',description:'Dokładna treść zmiany'}},r:['kind','title','reason','content']},
  {name:'complete_task',description:'Oznacz zadanie jako zrobione (fragment tekstu zadania)',p:{match:{type:'string'}},r:['match']}];
+ T=T.concat(extraTools());
  S.conn.forEach(function(c){T.push({name:'app_'+c.id,description:'Akcja w aplikacji "'+c.name+'": '+c.desc,p:{payload:{type:'string',description:'Treść/dane do wysłania, JSON lub tekst'}},r:['payload']})});return T}
 function runTool(n,a){
  if(n==='add_task'){S.tasks.push({id:uid(),t:a.text,done:false});save();return Promise.resolve('Dodano zadanie: '+a.text)}
  if(n==='save_memory'){S.mem.push({id:uid(),t:a.fact});save();return Promise.resolve('Zapamiętano')}
  if(n==='propose_improvement'){S.props.push({id:uid(),kind:a.kind,title:a.title,reason:a.reason,content:a.content,pers:S.pers});save();return Promise.resolve('Propozycja czeka na zatwierdzenie w zakładce Rozwój. Powiedz użytkownikowi: "Czy zatwierdzasz tę zmianę?"')}
  if(n==='complete_task'){var f=S.tasks.filter(function(x){return!x.done&&x.t.toLowerCase().indexOf(String(a.match).toLowerCase())>=0})[0];if(f){f.done=true;save();return Promise.resolve('Zrobione: '+f.t)}return Promise.resolve('Nie znaleziono zadania')}
+ var xr=extraRun(n,a);if(xr)return xr;
  var c=S.conn.filter(function(x){return 'app_'+x.id===n})[0];if(!c)return Promise.resolve('Brak połączenia');
  return fetch(c.url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({app:c.name,payload:a.payload,at:new Date().toISOString()})}).then(function(){return 'Wysłano do '+c.name}).catch(function(e){return 'Błąd: '+e.message})}
 /* LLM adapters: each returns {text, calls:[{id,name,args}], raw} */
@@ -56,7 +58,7 @@ function fixTail(o){/* ensure starts with user */while(o.length&&o[0].role!=='us
 var busy=false,live=false;function afterSpeak(){state('');if(live&&!rec&&!busy)setTimeout(function(){if(live&&!rec)$('#mic').click()},350)}
 function ask(text){
  if(busy)return;if(!S.key&&!srv()&&!cp()){go('set');alert('Najpierw wpisz klucz API w Ustawieniach.');return}
- busy=true;var h=H();h.push({role:'user',text:text,cls:'u',show:1});save();render();state('listen');
+ busy=true;var h=H();h.push({role:'user',text:text,cls:'u',show:1,at:Date.now()});save();render();state('listen');
  var msgs=fixTail(native()),steps=0,note=[];
  function step(){return llm(msgs).then(function(r){
   if(r.calls.length&&steps++<4){
@@ -67,7 +69,7 @@ function ask(text){
     else msgs.push({role:'user',parts:outs.map(function(o){return{functionResponse:{name:o.c.name,response:{result:o.res}}}})});
     return step()})}
   return r.text})}
- step().then(function(t){note.forEach(function(n){h.push({role:'note',text:n,cls:'t',show:1})});t=t||'(brak odpowiedzi)';h.push({role:'assistant',text:t,cls:'a',show:1});save();render();speak(t)})
+ step().then(function(t){note.forEach(function(n){h.push({role:'note',text:n,cls:'t',show:1})});t=t||'(brak odpowiedzi)';h.push({role:'assistant',text:t,cls:'a',show:1,at:Date.now()});save();render();speak(t)})
  .catch(function(e){h.push({role:'note',text:'Błąd: '+e.message,cls:'t',show:1});render();state('')})
  .then(function(){busy=false})}
 $('#send').onclick=function(){var v=$('#inp').value.trim();if(v){$('#inp').value='';ask(v)}};
