@@ -91,7 +91,7 @@ $('#tts').onchange=function(){S.tts=this.value;S.voice='';voices()};
 $('#pers').onchange=function(){S.pers=this.value;$('#pintro').value=S.intros[S.pers]||''};
 $('#prov').onchange=function(){S.prov=this.value;mfill();var d={openai:'gpt-4o',gemini:'gemini-2.0-flash',anthropic:'claude-sonnet-4-5'};if(d[this.value])$('#model').value=d[this.value]};
 $('#save').onclick=function(){['prov','model','key','tts','auto','lang'].forEach(function(k){S[k]=$('#'+k).value.trim()});S.voice=$('#voice').value;S.pers=$('#pers').value;var i=$('#pintro').value.trim();if(i)S.intros[S.pers]=i;else delete S.intros[S.pers];save();avs();render();go('chat')};
-$('#exp').onclick=function(){var d=Object.assign({},S,{key:''});var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,1)],{type:'application/json'}));a.download='evoo-dane.json';a.click()};
+$('#exp').onclick=function(){var d=Object.assign({},S,{key:'',el:null,cust:[],srv:null});var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,1)],{type:'application/json'}));a.download='evoo-dane.json';a.click()};
 $('#wipe').onclick=function(){if(confirm('Usunąć wszystkie dane?')){localStorage.removeItem('evoo');location.reload()}};
 provOpts();fill();sfill();mfill();avs();render();go(S.key||srv()?'chat':'set');if(srv()&&(S.srv.pass||'').length>=12)pull().catch(function(){});
 if('serviceWorker'in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(function(){});
