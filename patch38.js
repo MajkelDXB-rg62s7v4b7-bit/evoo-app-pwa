@@ -26,3 +26,24 @@ llm=function(msgs){return _llm(msgs).catch(function(e){if(qerr(e)&&S.fb&&S.fb!==
 memTick=function(){S.mc++;Object.keys(S.hist).forEach(function(k){if(S.hist[k].length>300)S.hist[k].splice(0,S.hist[k].length-300)});if(S.mc>=10)consolidate()};
 render=function(){var h=H();$('#msgs').innerHTML=h.filter(function(m){return m.show}).map(function(m){var t=m.text;if(m.cls==='t'){t=String(t).split('\n')[0];if(t.length>90)t=t.slice(0,90)+'…'}return '<div class="m '+m.cls+'">'+esc(t)+'</div>'}).join('')||'<div class="m t">Cześć! Jestem '+esc(P[S.pers].n)+'. Napisz lub naciśnij 🎤.</div>';$('#msgs').scrollTop=1e9};
 render();
+/* ===== v13: automatyczny dobór modelu do API ===== */
+(function(){
+var BAD=/whisper|tts|orpheus|guard|safeguard|embed|moderation|transcribe|image|imagen|veo|dall|audio|live|realtime|allam|rerank|robotics|aqa|nano-banana|omni/i;
+var SC=[[/pro\b/,30],[/opus/,35],[/sonnet/,30],[/gpt-5/,35],[/gpt-4\.1(?!-mini|-nano)/,25],[/gpt-4o(?!-mini)/,20],[/3\.8/,28],[/3\.6/,20],[/3\.5/,14],[/405b/,30],[/120b/,28],[/70b/,25],[/32b|27b/,15],[/qwen3|qwen-3/,10],[/llama-3\.3/,12],[/reasoner|deepseek-r1|deepseek-chat/,15],[/flash/,10],[/lite|mini|nano|small|instant|haiku/,-8],[/\b8b\b|-8b|7b/,-10],[/preview|exp/,-2]];
+function score(id){if(BAD.test(id))return -999;var s=0;SC.forEach(function(r){if(r[0].test(id))s+=r[1]});return s}
+function rank(l){return l.filter(function(m){return score(m)>-999}).sort(function(a,b){return score(b)-score(a)})}
+function autoPick(){var st=$('#mstat');S.key=$('#key').value.trim()||S.key;S.prov=$('#prov').value;st.textContent='Pobieram listę modeli…';
+ return listModels().then(function(l){S.models[S.prov]=l.slice().sort();var r=rank(l);if(!r.length)throw new Error('Brak modeli do rozmowy na tej liście');
+  var cand=r.slice(0,4),oks=[],i=0;S.ok[S.prov]=S.ok[S.prov]||{};
+  function nx(){if(i>=cand.length||oks.length>=3)return Promise.resolve();var m=cand[i++];st.textContent='Testuję '+m+' ('+i+'/'+cand.length+')…';return ping(m).then(function(x){S.ok[S.prov][m]=x;if(x===true)oks.push(m);return nx()})}
+  return nx().then(function(){if(!oks.length)throw new Error('Żaden z najlepszych modeli nie odpowiedział. Sprawdź klucz i limity.');
+   S.model=oks[0];S.fb=oks[1]||'';S.fast=oks.filter(function(m){return/lite|mini|nano|small|instant|haiku|8b|20b/i.test(m)})[0]||oks[oks.length-1];S.fastp=S.prov;
+   S.chain=oks.concat(r.filter(function(m){return oks.indexOf(m)<0}).slice(0,3));S.chainp=S.prov;$('#model').value=S.model;save();mfill();
+   st.textContent='✅ Główny: '+S.model+(S.fb?' · zapasowy: '+S.fb:'')+' · szybki: '+S.fast})}).catch(function(e){st.textContent='❌ '+e.message})}
+var row=$('#testall').parentNode,b=document.createElement('button');b.className='pri';b.id='autob';b.textContent='🤖 Auto-dobór najlepszego modelu';b.style.margin='8px 0';row.parentNode.insertBefore(b,row);
+b.onclick=function(){work(b,'Dobieram…',autoPick())};
+var LIGHT=/^(router|mem|dash)$/,_o=once;once=function(s,u,o){o=o||{};if(!o.model&&!(S.mm&&S.mm[o.mod])&&S.fast&&S.fastp===S.prov&&LIGHT.test(o.mod||''))o.model=S.fast;return _o(s,u,o)};
+var _l=llm;llm=function(m){return _l(m).catch(function(e){var t=String(e&&e.message||e);if(!/does not exist|not found|no longer available|decommission|access to it|model_not_found/i.test(t)||S.chainp!==S.prov)throw e;
+ var ch=(S.chain||[]).filter(function(x){return x!==S.model});function nx(i){if(i>=ch.length)throw e;var keep=S.model;S.model=ch[i];return _l(m).then(function(r){$('#model').value=S.model;save();return r},function(e2){S.model=keep;return nx(i+1)})}return nx(0)})};
+window.__autoPick=autoPick;
+})();
