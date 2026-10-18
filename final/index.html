@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Evoo AI OS</title>
+<meta name="description" content="Evoo AI OS – Twój cel. Mój plan. Nasz wynik.">
+<meta name="theme-color" content="#090D16">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Evoo">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="styles.css">
+<style>html{padding-top:env(safe-area-inset-top,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <button class="logo" id="logo" aria-label="Start"><img id="logoImg" alt=""><b>Evoo<span>AI OS</span></b></button>
+  <div class="status wait" id="status"><i></i><span>Łączę…</span></div>
+</div></header>
+
+<main class="wrap" id="view" style="padding-top:18px"></main>
+<div id="composerSlot"></div>
+<nav class="nav" aria-label="Nawigacja"><div class="in" id="nav"></div></nav>
+<div class="toast" id="toast" hidden></div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
