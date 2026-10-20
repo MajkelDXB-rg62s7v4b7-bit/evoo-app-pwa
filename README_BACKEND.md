@@ -16,6 +16,7 @@ Set these environment variables in Vercel (or copy `.env.example` for local deve
 - `GEMINI_API_KEY` = Google AI Studio API key (optional; second fallback provider)
 - `OPENROUTER_API_KEY` = OpenRouter API key (optional; final fallback provider)
 - `WHATSAPP_VERIFY_TOKEN` = secret chosen when registering the WhatsApp webhook
+- `EVOO_APP_ORIGIN` = allowed PWA origin when hosting the frontend separately (optional)
 
 At least one AI provider key is required. The chat endpoint requires `EVOO_ACCESS_KEY`; the PWA sends it in the standard Authorization header when connecting to the server. Keep provider keys and the access key in Vercel settings; do not put them in frontend files.
 
@@ -45,6 +46,6 @@ Core API routes:
 - `POST /api/proxy/chat`
 - `POST /api/webhook/twilio`
 
-If the PWA is hosted on a different domain from the API, set `window.EVOO_CHAT_API` in `final/config.js` to the API origin. The chat endpoint is authenticated; use HTTPS and rotate access/provider keys if exposed.
+If the PWA is hosted on a different domain from the API, set `window.EVOO_CHAT_API` in `final/config.js` to the API origin and `EVOO_APP_ORIGIN` to the exact PWA origin. The chat endpoint is authenticated; use HTTPS and rotate access/provider keys if exposed.
 
 This is a practical MVP for a single-user use case. For production use, add persistent audit storage and a secure secret manager.

@@ -25,8 +25,8 @@ module.exports = async function handler(req, res) {
 
   const entries = Array.isArray(req.body?.entry) ? req.body.entry : [];
   for (const entry of entries) {
-    for (const change of Array.isArray(entry.changes) ? entry.changes : []) {
-      for (const message of Array.isArray(change.value?.messages) ? change.value.messages : []) {
+    for (const change of Array.isArray(entry?.changes) ? entry.changes : []) {
+      for (const message of Array.isArray(change?.value?.messages) ? change.value.messages : []) {
         if (message.type !== 'text' || typeof message.text?.body !== 'string') continue;
         console.info(JSON.stringify({
           event: 'whatsapp_inbound_text',

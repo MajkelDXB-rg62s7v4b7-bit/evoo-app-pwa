@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 const PROVIDERS = [
   {
     id: 'groq',
@@ -22,13 +24,28 @@ const MAX_PROMPT_CHARS = 80000;
 const MAX_MESSAGES = 30;
 
 function configuredProviders() {
-  return PROVIDERS.filter((provider) => process.env[provider.key]);
+  return PROVIDERS.filter((provider) => process.env[provider.key]?.trim());
 }
 
 function authorized(req) {
   const expected = process.env.EVOO_ACCESS_KEY;
-  const supplied = String(req.headers?.authorization || '').replace(/^Bearer\s+/i, '');
-  return Boolean(expected && supplied && supplied === expected);
+  const match = String(req.headers?.authorization || '').match(/^Bearer\s+(.+)$/i);
+  if (!expected || !match) return false;
+  const expectedBuffer = Buffer.from(expected);
+  const suppliedBuffer = Buffer.from(match[1]);
+  return expectedBuffer.length === suppliedBuffer.length && crypto.timingSafeEqual(expectedBuffer, suppliedBuffer);
+}
+
+function setCors(req, res) {
+  const origin = req.headers?.origin;
+  if (process.env.EVOO_APP_ORIGIN && origin === process.env.EVOO_APP_ORIGIN) {
+    res.setHeader('Access-Control-Allow-Origin', process.env.EVOO_APP_ORIGIN);
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Vary', 'Origin');
+    return true;
+  }
+  return false;
 }
 
 function normalizeMessages(body) {
@@ -109,6 +126,11 @@ async function callProvider(provider, key, messages) {
 }
 
 module.exports = async function handler(req, res) {
+  const corsAllowed = setCors(req, res);
+  if (req.method === 'OPTIONS') {
+    res.status(corsAllowed ? 204 : 403).end();
+    return;
+  }
   const providers = configuredProviders();
   if (req.method === 'GET') {
     if (!process.env.EVOO_ACCESS_KEY || !providers.length) {
@@ -161,7 +183,7 @@ module.exports = async function handler(req, res) {
       });
       return;
     } catch (error) {
-      attempts.push({ provider: provider.id, error: String(error.message || 'Request failed').slice(0, 240) });
+      attempts.push({ provider: provider.id, error: error.status ? `HTTP ${error.status}` : 'Network or timeout error' });
     }
   }
 
