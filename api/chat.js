@@ -29,10 +29,10 @@ function configuredProviders() {
 
 function authorized(req) {
   const expected = process.env.EVOO_ACCESS_KEY;
-  const match = String(req.headers?.authorization || '').match(/^Bearer\s+(.+)$/i);
-  if (!expected || !match) return false;
+  const authorization = String(req.headers?.authorization || '');
+  if (!expected || authorization.slice(0, 7).toLowerCase() !== 'bearer ') return false;
   const expectedBuffer = Buffer.from(expected);
-  const suppliedBuffer = Buffer.from(match[1]);
+  const suppliedBuffer = Buffer.from(authorization.slice(7));
   return expectedBuffer.length === suppliedBuffer.length && crypto.timingSafeEqual(expectedBuffer, suppliedBuffer);
 }
 
