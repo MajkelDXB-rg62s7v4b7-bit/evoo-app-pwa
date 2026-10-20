@@ -119,6 +119,10 @@ function loadCfg(){
 function api(path,init={}){
   return fetch(CFG.api+path,{...init,headers:{'Content-Type':'application/json',Authorization:'Bearer '+CFG.key,...(init.headers||{})}});
 }
+function chatApi(path,init={}){
+  const base=String(window.EVOO_CHAT_API||'').replace(/\/+$/,'');
+  return fetch(base+path,{...init,headers:{'Content-Type':'application/json',Authorization:'Bearer '+CFG.key,...(init.headers||{})}});
+}
 let providers=null;
 function parseLoose(t){
   t=String(t||'').trim();
@@ -133,9 +137,16 @@ async function brain(input,opts={}){
   const body=typeof input==='string'?{system:'',messages:[{role:'user',content:input}]}:{system:input[0].content,messages:input.slice(1)};
   body.tier=opts.modelTier||'default';
   let res;
-  try{res=await api('/api/chat',{method:'POST',body:JSON.stringify(body),signal:opts.signal})}
+  try{res=await (isServer()?chatApi('/api/chat',{method:'POST',body:JSON.stringify(body),signal:opts.signal}):api('/api/chat',{method:'POST',body:JSON.stringify(body),signal:opts.signal}))}
   catch(e){throw {code:opts.signal&&opts.signal.aborted?'cancelled':'network'}}
   if(!res.ok){let j={};try{j=await res.json()}catch(e){}throw {code:res.status===401?'unauthorized':res.status===503?'no_keys':res.status===413?'prompt_too_large':'all_failed',message:j.error||''}}
+  if(res.headers.get('content-type')?.includes('application/json')){
+    const j=await res.json(),text=String(j.text||'');
+    if(!text.trim())throw {code:'empty'};
+    const meta={provider:j.provider||'',model:j.model||'',fallbacks:Number(j.fallbacks)||0};
+    opts.onText&&opts.onText({text,delta:text});
+    return {text,truncated:false,meta};
+  }
   const meta={provider:res.headers.get('X-Evoo-Provider')||'',model:res.headers.get('X-Evoo-Model')||'',fallbacks:+(res.headers.get('X-Evoo-Fallbacks')||0)};
   const reader=res.body.getReader();const dec=new TextDecoder();let text='';
   try{
@@ -1405,6 +1416,7 @@ const PROV={
 };
 const DLABEL=Object.fromEntries(Object.entries(PROV).map(([k,v])=>[k,v.label]));
 const isDirect=()=>lsRaw('evoo:mode')==='direct';
+const isServer=()=>lsRaw('evoo:mode')==='server';
 function gkeys(){
   let k={};try{k=JSON.parse(lsRaw('evoo:keys')||'{}')||{}}catch(e){k={}}
   for(const id of ['gemini','groq','openrouter']){const old=lsRaw('evoo:k:'+id);if(old&&!k[id])k[id]=old}
@@ -1529,6 +1541,13 @@ function vConnect(){
     <div class="small muted">Darmowe: Gemini, Groq, Cerebras, Mistral, OpenRouter. Płatne (OpenAI, DeepSeek, xAI) router wybiera dopiero na końcu, gdy darmowe zawiodą. Klucze i Twoje dane zostają tylko w tej przeglądarce, na tym urządzeniu.</div>
     <div class="err" id="dErr" hidden></div>
   </form>
+  <form class="panel form" id="serverConn">
+    <b>Witch Router na serwerze</b>
+    <div class="small muted">Klucze dostawców pozostają na serwerze. Wpisz hasło dostępu ustawione jako EVOO_ACCESS_KEY.</div>
+    <input class="field" id="serverKey" type="password" placeholder="EVOO_ACCESS_KEY" autocomplete="current-password" required>
+    <button class="btn" id="serverBtn">Połącz z Witch Routerem</button>
+    <div class="err" id="serverErr" hidden></div>
+  </form>
   <details class="hist"><summary><span>Mam własny mózg Convex</span></summary>
   <form class="form" id="conn" style="margin-top:8px">
     <label class="eyebrow" for="cApi">Adres mózgu (Convex)</label>
@@ -1554,6 +1573,13 @@ function vConnect(){
     e.preventDefault();if(inp.value.trim()&&!addKey())return;
     const k=gkeys();if(!Object.keys(k).some(id=>k[id]&&PROV[id])){er.textContent='Dodaj przynajmniej jeden klucz.';er.hidden=false;return}
     lsRawSet('evoo:mode','direct');startDirect();go('start');toast('Evoo uruchomiona');
+  };
+  $('#serverConn').onsubmit=async e=>{
+    e.preventDefault();const btn=$('#serverBtn'),er=$('#serverErr'),key=$('#serverKey').value.trim();
+    er.hidden=true;btn.disabled=true;btn.textContent='Łączę…';
+    const result=await connectServer(key);
+    if(result===true){go('start');toast('Połączono z Witch Routerem')}
+    else{er.textContent=result;er.hidden=false;btn.disabled=false;btn.textContent='Połącz z Witch Routerem'}
   };
   $('#conn').onsubmit=async e=>{
     e.preventDefault();const btn=$('#cBtn2'),er=$('#cErr');
@@ -1583,9 +1609,23 @@ async function connect(){
   }catch(e){syncState='error'}
   return true;
 }
+async function connectServer(key){
+  if(!key)return 'Wpisz klucz dostępu.';
+  let res;
+  try{res=await chatApi('/api/chat',{headers:{Authorization:'Bearer '+key}})}catch(e){return 'Nie mogę połączyć się z serwerem aplikacji.'}
+  if(!res.ok){let j={};try{j=await res.json()}catch(e){}return j.error||'Nie udało się połączyć z Witch Routerem.'}
+  CFG.key=key;lsRawSet('evoo:key',key);lsRawSet('evoo:mode','server');
+  cloud=false;syncState='local';sampleFn=brain;aiState='ok';renderStatus();
+  return true;
+}
 (async()=>{
   loadCfg();
   if(isDirect()){const k=gkeys();if(Object.keys(k).some(id=>k[id]&&PROV[id])){startDirect();render();return}}
+  if(isServer()){
+    const result=await connectServer(CFG.key);
+    if(result===true){go('start');render();return}
+    lsRawSet('evoo:mode','');
+  }
   if(!CFG.api||!CFG.key){aiState='off';go('connect');renderStatus();return}
   const r=await connect();
   if(r!==true){aiState='off';renderStatus();go('connect');const er=$('#cErr');if(er){er.textContent=r;er.hidden=false;er.closest('details').open=true}return}

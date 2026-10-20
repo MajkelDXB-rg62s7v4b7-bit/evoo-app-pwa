@@ -1,8 +1,10 @@
 # Created by GitHub Copilot Chat Assistant
 # Ignore local dev files
 node_modules/
+data/
 .env
 .env.*
+!.env.example
 .DS_Store
 *.log
 coverage/
