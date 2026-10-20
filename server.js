@@ -59,9 +59,10 @@ async function readJson(req) {
     }
     chunks.push(chunk);
   }
+  req.rawBody = Buffer.concat(chunks);
   if (!size) return {};
   try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    return JSON.parse(req.rawBody.toString('utf8'));
   } catch {
     const error = new Error('Request body must be valid JSON');
     error.status = 400;
@@ -122,7 +123,13 @@ function createServer() {
         res.end(JSON.stringify({ ok: false, error: error.message }));
         return;
       }
-      await handler(req, responseAdapter(res));
+      try {
+        await handler(req, responseAdapter(res));
+      } catch (error) {
+        console.error('Chat handler failed:', String(error.message || error).slice(0, 240));
+        if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        if (!res.writableEnded) res.end(JSON.stringify({ ok: false, error: 'Chat request failed' }));
+      }
       return;
     }
     if (url.pathname === '/webhook' || url.pathname === '/api/whatsapp-webhook') {
@@ -135,7 +142,13 @@ function createServer() {
         res.end(JSON.stringify({ ok: false, error: error.message }));
         return;
       }
-      await handler(req, responseAdapter(res));
+      try {
+        await handler(req, responseAdapter(res));
+      } catch (error) {
+        console.error('WhatsApp webhook failed:', String(error.message || error).slice(0, 240));
+        if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        if (!res.writableEnded) res.end(JSON.stringify({ ok: false, error: 'Webhook request failed' }));
+      }
       return;
     }
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -153,9 +166,15 @@ if (require.main === module) {
     console.error('PORT must be an integer between 1 and 65535');
     process.exitCode = 1;
   } else {
-    createServer().listen(port, '0.0.0.0', () => {
+    const { startReminderScheduler } = require('./api/lib/reminder-scheduler');
+    const server = createServer();
+    startReminderScheduler();
+    server.listen(port, '0.0.0.0', () => {
       console.log(`Evoo PWA and API listening on http://localhost:${port}`);
     });
+    const shutdown = () => server.close(() => process.exit(0));
+    process.once('SIGINT', shutdown);
+    process.once('SIGTERM', shutdown);
   }
 }
 
