@@ -1,6 +1,6 @@
 # Evoo Secure AI Backend
 
-This project uses Vercel Node.js serverless functions (not an Express server) alongside a static, vanilla-JavaScript PWA.
+The project has a static vanilla-JavaScript PWA and Node.js API handlers. Run locally using the built-in Node.js server (`npm start`), or deploy the handlers as Vercel serverless functions. No Express dependency is required.
 
 It provides:
 - one-time upload token generation for provider keys
@@ -10,17 +10,22 @@ It provides:
 - a Groq → Gemini → OpenRouter fallback router at `POST /api/chat`
 - WhatsApp Cloud API verification and inbound text logging at `/webhook`
 
-Set these environment variables in Vercel (or copy `.env.example` for local development):
+Set these environment variables in Vercel or copy `.env.example` to `.env` for local development:
 - `EVOO_ACCESS_KEY` = long random secret used to authorize `/api/chat`
 - `GROQ_API_KEY` = Groq API key (optional; first fallback provider)
 - `GEMINI_API_KEY` = Google AI Studio API key (optional; second fallback provider)
 - `OPENROUTER_API_KEY` = OpenRouter API key (optional; final fallback provider)
 - `WHATSAPP_VERIFY_TOKEN` = secret chosen when registering the WhatsApp webhook
+- `WHATSAPP_TOKEN` = WhatsApp Cloud API access token (for Graph API integrations)
+- `PHONE_NUMBER_ID` = WhatsApp Cloud API phone number ID
 - `EVOO_APP_ORIGIN` = allowed PWA origin when hosting the frontend separately (optional)
+- `PORT` = local server port (defaults to `3000`)
 
 At least one AI provider key is required. The chat endpoint requires `EVOO_ACCESS_KEY`; the PWA sends it in the standard Authorization header when connecting to the server. Keep provider keys and the access key in Vercel settings; do not put them in frontend files.
 
 The WhatsApp Cloud API callback URL is `https://your-app.vercel.app/webhook`. Set the same `WHATSAPP_VERIFY_TOKEN` in Meta's webhook configuration. Incoming text messages are written to the serverless function log.
+
+For local startup, copy `.env.example` to `.env`, fill in `EVOO_ACCESS_KEY`, at least one AI provider key and (for webhook verification) `WHATSAPP_VERIFY_TOKEN`, then run `npm start` and open `http://localhost:3000`. To receive Meta webhooks locally, run `ngrok http 3000` and register `https://<ngrok-domain>/webhook` with the same verify token. The PWA is served by the same Node.js process.
 
 Legacy upload/Twilio integration environment variables:
 - `MASTER_KEY` = base64-encoded 32 byte key
