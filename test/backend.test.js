@@ -61,7 +61,7 @@ test('Witch Router executes a declared Google Calendar function call', async (t)
   let calendarCreates = 0;
   const originalFetch = global.fetch;
   global.fetch = async (url, options = {}) => {
-    if (String(url).includes('api.groq.com')) {
+    if (new URL(url).hostname === 'api.groq.com') {
       modelCalls++;
       const request = JSON.parse(options.body);
       if (modelCalls === 1) {
@@ -122,7 +122,13 @@ test('Witch Router falls back in Groq, Gemini, OpenRouter order', async (t) => {
   });
   const result = await runWitchRouter([{ role: 'user', content: 'Powiedz cześć.' }], {}, { remember: false });
   assert.equal(result.text, 'OpenRouter odpowiedział.');
-  assert.deepEqual(calls.map((url) => url.includes('groq.com') ? 'groq' : url.includes('generativelanguage.googleapis.com') ? 'gemini' : 'openrouter'), ['groq', 'gemini', 'openrouter']);
+  assert.deepEqual(calls.map((url) => {
+    const host = new URL(url).hostname;
+    if (host === 'api.groq.com') return 'groq';
+    if (host === 'generativelanguage.googleapis.com') return 'gemini';
+    if (host === 'openrouter.ai') return 'openrouter';
+    throw new Error(`Unexpected provider host ${host}`);
+  }), ['groq', 'gemini', 'openrouter']);
 });
 
 test('WhatsApp webhook rejects unsigned requests and transcribes signed audio', async (t) => {
